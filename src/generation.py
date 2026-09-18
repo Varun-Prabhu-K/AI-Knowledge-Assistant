@@ -41,13 +41,9 @@ Question:
 {question}
 """
 
-    response = client.interactions.create(
-        model="gemini-3.8-flash",
-        system_instruction=(
-            "You answer questions using the provided document context. "
-            "Stay grounded in that context and do not invent information."
-        ),
-        input=prompt
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
     )
 
-    return response.output_text
+    return response.text
