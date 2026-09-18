@@ -167,7 +167,7 @@ if submitted and question.strip():
 
         retrieved_chunks = retrieve_chunks(
             question,
-            top_k=3
+            top_k=10
         )
 
     if not retrieved_chunks:
