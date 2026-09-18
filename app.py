@@ -160,56 +160,31 @@ with st.form("question_form"):
 # --------------------------------------------------
 
 if submitted and question.strip():
-
-    with st.spinner(
-        "Searching the knowledge base..."
-    ):
-
-        retrieved_chunks = retrieve_chunks(
-            question,
-            top_k=10
-        )
+    with st.spinner("Searching the knowledge base..."):
+        retrieved_chunks = retrieve_chunks(question, top_k=10)
 
     if not retrieved_chunks:
-
-        st.warning(
-            "I could not find relevant information "
-            "in the knowledge base."
-        )
-
+        st.warning("I could not find relevant information in the knowledge base.")
     else:
-
-        with st.spinner(
-            "Generating answer..."
-        ):
-
-            answer = generate_answer(
-                question,
-                retrieved_chunks
-            )
+        with st.spinner("Generating answer..."):
+            answer = generate_answer(question, retrieved_chunks)
 
         st.subheader("Answer")
-
         st.write(answer)
-
-
-        # --------------------------------------------------
-        # SOURCES
-        # --------------------------------------------------
 
         st.subheader("Sources")
 
-source_pages = {}
+        source_pages = {}
 
-for chunk in retrieved_chunks:
-    source = chunk.get("source", "Unknown source")
-    pages = chunk.get("pages", [])
+        for chunk in retrieved_chunks:
+            source = chunk.get("source", "Unknown source")
+            pages = chunk.get("pages", [])
 
-    if source not in source_pages:
-        source_pages[source] = set()
+            if source not in source_pages:
+                source_pages[source] = set()
 
-    source_pages[source].update(pages)
+            source_pages[source].update(pages)
 
-for source, pages in source_pages.items():
-    formatted_pages = format_pages(pages) if pages else "Unknown"
-    st.write(f"**{source}** — Pages {formatted_pages}")
+        for source, pages in source_pages.items():
+            formatted_pages = format_pages(pages) if pages else "Unknown"
+            st.write(f"**{source}** — Pages {formatted_pages}")
