@@ -139,14 +139,7 @@ def make_chunk(document, metadata):
 def retrieve_chunks(question, top_k=10):
     question_embedding = embedding_model.encode(question).tolist()
 
-    results = collection.query(
-        query_embeddings=[question_embedding],
-        n_results=top_k,
-        include=["documents", "metadatas"]
-    )
-
-    documents = results.get("documents", [[]])[0]
-
+    # Get all stored documents and their metadata
     all_results = collection.get(
         include=["documents", "metadatas"]
     )
@@ -154,106 +147,63 @@ def retrieve_chunks(question, top_k=10):
     all_documents = all_results.get("documents", [])
     all_metadatas = all_results.get("metadatas", [])
 
-    retrieved_indexes = []
+    # Find all unique source documents
+    sources = sorted(
+        set(
+            metadata.get("source", "Unknown source")
+            for metadata in all_metadatas
+        )
+    )
 
-    for document in documents:
-        for index, stored_document in enumerate(all_documents):
-            if document == stored_document:
-                retrieved_indexes.append(index)
-                break
+    # Map each stored document to its index
+    document_to_index = {}
+
+    for index, document in enumerate(all_documents):
+        document_to_index[document] = index
 
     selected_indexes = set()
 
-    for index in retrieved_indexes:
-        selected_indexes.add(index)
+    # Retrieve relevant chunks separately from each document
+    chunks_per_source = 3
 
-        current_source = all_metadatas[index].get("source")
-
-        if index > 0:
-            previous_source = all_metadatas[index - 1].get("source")
-            if previous_source == current_source:
-                selected_indexes.add(index - 1)
-
-        if index + 1 < len(all_documents):
-            next_source = all_metadatas[index + 1].get("source")
-            if next_source == current_source:
-                selected_indexes.add(index + 1)
-
-    retrieved_chunks = []
-
-    for index in sorted(selected_indexes):
-        metadata = all_metadatas[index]
-        retrieved_chunks.append(
-            make_chunk(all_documents[index], metadata)
+    for source in sources:
+        results = collection.query(
+            query_embeddings=[question_embedding],
+            n_results=min(chunks_per_source, sum(
+                1 for metadata in all_metadatas
+                if metadata.get("source") == source
+            )),
+            where={"source": source},
+            include=["documents", "metadatas"]
         )
 
-    return retrieved_chunks
+        documents = results.get("documents", [[]])[0]
 
-    # -----------------------------------------------------
-    # Identify the indexes of the retrieved chunks
-    # -----------------------------------------------------
+        for document in documents:
+            if document not in document_to_index:
+                continue
 
-    retrieved_indexes = []
+            index = document_to_index[document]
 
+            selected_indexes.add(index)
 
-    for document in documents:
+            # Add neighboring chunks only from the same document
+            if index > 0:
+                previous_source = all_metadatas[index - 1].get("source")
 
-        for index, stored_document in enumerate(
-            all_documents
-        ):
+                if previous_source == source:
+                    selected_indexes.add(index - 1)
 
-            if document == stored_document:
+            if index + 1 < len(all_documents):
+                next_source = all_metadatas[index + 1].get("source")
 
-                retrieved_indexes.append(
-                    index
-                )
-
-                break
-
-
-    # -----------------------------------------------------
-    # Add neighbouring chunks
-    # -----------------------------------------------------
-
-    selected_indexes = set()
-
-
-    for index in retrieved_indexes:
-
-        # Add the retrieved chunk itself.
-
-        selected_indexes.add(index)
-
-
-        # Add the chunk immediately before it.
-
-        if index > 0:
-
-            selected_indexes.add(
-                index - 1
-            )
-
-
-        # Add the chunk immediately after it.
-
-        if index + 1 < len(all_documents):
-
-            selected_indexes.add(
-                index + 1
-            )
-
-
-    # -----------------------------------------------------
-    # Convert selected chunks
-    # -----------------------------------------------------
+                if next_source == source:
+                    selected_indexes.add(index + 1)
 
     retrieved_chunks = []
 
-
     for index in sorted(selected_indexes):
-
         metadata = all_metadatas[index]
-
 
         retrieved_chunks.append(
             make_chunk(
@@ -261,7 +211,6 @@ def retrieve_chunks(question, top_k=10):
                 metadata
             )
         )
-
 
     return retrieved_chunks
 
