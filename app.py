@@ -164,7 +164,9 @@ if submitted and question.strip():
         retrieved_chunks = retrieve_chunks(question, top_k=10)
 
     if not retrieved_chunks:
-        st.warning("I could not find relevant information in the knowledge base.")
+        st.warning(
+            "I could not find relevant information in the knowledge base."
+        )
     else:
         with st.spinner("Generating answer..."):
             answer = generate_answer(
@@ -174,40 +176,3 @@ if submitted and question.strip():
 
         st.subheader("Answer")
         st.markdown(answer)
-
-        if source_ids:
-            st.subheader("Sources")
-
-            displayed_sources = set()
-
-            for source_id in source_ids:
-                chunk = retrieved_chunks[source_id - 1]
-
-                source = chunk.get("source", "Unknown source")
-                pages = chunk.get("pages", [])
-
-                source_key = source
-
-                if source_key not in displayed_sources:
-                    displayed_sources.add(source_key)
-
-                    all_pages = set()
-
-                    for selected_id in source_ids:
-                        selected_chunk = retrieved_chunks[selected_id - 1]
-
-                        if selected_chunk.get("source") == source:
-                            all_pages.update(
-                                selected_chunk.get("pages", [])
-                            )
-
-                    formatted_pages = (
-                        format_pages(sorted(all_pages))
-                        if all_pages
-                        else "Unknown"
-                    )
-
-                    st.write(
-                        f"**Source {source_id}:** "
-                        f"{source} — Pages {formatted_pages}"
-                    )
