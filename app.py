@@ -178,18 +178,36 @@ if submitted and question.strip():
         if source_ids:
             st.subheader("Sources")
 
+            displayed_sources = set()
+
             for source_id in source_ids:
                 chunk = retrieved_chunks[source_id - 1]
 
                 source = chunk.get("source", "Unknown source")
                 pages = chunk.get("pages", [])
 
-                formatted_pages = (
-                    format_pages(pages)
-                    if pages
-                    else "Unknown"
-                )
+                source_key = source
 
-                st.write(
-                    f"**{source}** — Pages {formatted_pages}"
-                )
+                if source_key not in displayed_sources:
+                    displayed_sources.add(source_key)
+
+                    all_pages = set()
+
+                    for selected_id in source_ids:
+                        selected_chunk = retrieved_chunks[selected_id - 1]
+
+                        if selected_chunk.get("source") == source:
+                            all_pages.update(
+                                selected_chunk.get("pages", [])
+                            )
+
+                    formatted_pages = (
+                        format_pages(sorted(all_pages))
+                        if all_pages
+                        else "Unknown"
+                    )
+
+                    st.write(
+                        f"**Source {source_id}:** "
+                        f"{source} — Pages {formatted_pages}"
+                    )
