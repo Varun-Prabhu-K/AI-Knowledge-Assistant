@@ -199,26 +199,17 @@ if submitted and question.strip():
 
         st.subheader("Sources")
 
-        for number, chunk in enumerate(
-            retrieved_chunks,
-            start=1
-        ):
+source_pages = {}
 
-            source = chunk.get(
-                "source",
-                "Unknown source"
-            )
+for chunk in retrieved_chunks:
+    source = chunk.get("source", "Unknown source")
+    pages = chunk.get("pages", [])
 
-            pages = chunk.get(
-                "pages",
-                []
-            )
+    if source not in source_pages:
+        source_pages[source] = set()
 
-            formatted_pages = format_pages(
-                pages
-            ) if pages else "Unknown"
+    source_pages[source].update(pages)
 
-            st.write(
-                f"**Source {number}:** "
-                f"{source} — Pages {formatted_pages}"
-            )
+for source, pages in source_pages.items():
+    formatted_pages = format_pages(pages) if pages else "Unknown"
+    st.write(f"**{source}** — Pages {formatted_pages}")
