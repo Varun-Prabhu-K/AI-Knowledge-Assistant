@@ -173,7 +173,7 @@ if submitted and question.strip():
             )
 
         st.subheader("Answer")
-        st.write(answer)
+        st.markdown(answer)
 
         if source_ids:
             st.subheader("Sources")
