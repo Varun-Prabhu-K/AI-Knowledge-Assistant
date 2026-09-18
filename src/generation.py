@@ -1,9 +1,7 @@
 import os
-import json
 
 from dotenv import load_dotenv
 from google import genai
-from google.genai import types
 
 load_dotenv()
 
@@ -19,10 +17,9 @@ def generate_answer(question, retrieved_chunks):
 
     context_parts = []
 
-    for number, chunk in enumerate(retrieved_chunks, start=1):
+    for chunk in retrieved_chunks:
         context_parts.append(
-            f"[Source {number}]\n"
-            f"Document: {chunk['source']}\n"
+            f"Source: {chunk['source']}\n"
             f"Pages: {chunk['pages']}\n"
             f"Content: {chunk['text']}"
         )
@@ -34,31 +31,12 @@ You are a document question-answering assistant.
 
 Answer the user's question using ONLY the provided document context.
 
-Do not invent facts.
+Do not invent facts or information that is not present in the documents.
 
-Format the answer using Markdown.
-When the answer contains multiple items, use a numbered list.
-Use short paragraphs, bullet points, or numbered lists when appropriate.
+If the answer is found in the documents, explain it clearly and concisely.
 
-SOURCE CITATION RULES:
-
-1. Cite supporting sources directly in the answer using exactly:
-   [Source N]
-
-2. Every factual part of the answer should have a supporting source citation.
-
-3. If a statement is supported by multiple sources, cite them like:
-   [Source 2, Source 5]
-
-4. Only use source numbers that actually exist in the provided context.
-
-5. Do not invent source numbers, documents, or pages.
-
-6. If the answer cannot be found in the provided context, say:
-   "The information could not be found in the provided documents."
-
-7. Do not create a separate Sources section.
-   The application handles that.
+If the information cannot be found in the provided documents, say:
+"The information could not be found in the provided documents."
 
 User question:
 {question}
@@ -69,41 +47,7 @@ Document context:
 
     response = client.models.generate_content(
         model="gemini-2.5-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_json_schema={
-                "type": "object",
-                "properties": {
-                    "answer": {
-                        "type": "string"
-                    },
-                    "source_ids": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    }
-                },
-                "required": [
-                    "answer",
-                    "source_ids"
-                ]
-            }
-        )
+        contents=prompt
     )
 
-    result = json.loads(response.text)
-
-    answer = result.get("answer", "")
-    source_ids = result.get("source_ids", [])
-
-    valid_source_ids = set(range(1, len(retrieved_chunks) + 1))
-
-    source_ids = [
-        source_id
-        for source_id in source_ids
-        if source_id in valid_source_ids
-    ]
-
-    return answer, source_ids
+    return response.text

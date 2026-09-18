@@ -167,7 +167,7 @@ if submitted and question.strip():
         st.warning("I could not find relevant information in the knowledge base.")
     else:
         with st.spinner("Generating answer..."):
-            answer, source_ids = generate_answer(
+            answer = generate_answer(
                 question,
                 retrieved_chunks
             )
