@@ -167,24 +167,29 @@ if submitted and question.strip():
         st.warning("I could not find relevant information in the knowledge base.")
     else:
         with st.spinner("Generating answer..."):
-            answer = generate_answer(question, retrieved_chunks)
+            answer, source_ids = generate_answer(
+                question,
+                retrieved_chunks
+            )
 
         st.subheader("Answer")
         st.write(answer)
 
-        st.subheader("Sources")
+        if source_ids:
+            st.subheader("Sources")
 
-        source_pages = {}
+            for source_id in source_ids:
+                chunk = retrieved_chunks[source_id - 1]
 
-        for chunk in retrieved_chunks:
-            source = chunk.get("source", "Unknown source")
-            pages = chunk.get("pages", [])
+                source = chunk.get("source", "Unknown source")
+                pages = chunk.get("pages", [])
 
-            if source not in source_pages:
-                source_pages[source] = set()
+                formatted_pages = (
+                    format_pages(pages)
+                    if pages
+                    else "Unknown"
+                )
 
-            source_pages[source].update(pages)
-
-        for source, pages in source_pages.items():
-            formatted_pages = format_pages(pages) if pages else "Unknown"
-            st.write(f"**{source}** — Pages {formatted_pages}")
+                st.write(
+                    f"**{source}** — Pages {formatted_pages}"
+                )
