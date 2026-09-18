@@ -1,12 +1,9 @@
 import os
 import json
-from typing import List
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from pydantic import BaseModel, Field
-
 
 load_dotenv()
 
@@ -18,16 +15,8 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 
-class AnswerResponse(BaseModel):
-    answer: str = Field(
-        description="The answer to the user's question, formatted using Markdown."
-    )
-    source_ids: List[int] = Field(
-        description="The numbers of the sources that directly support the answer."
-    )
-
-
 def generate_answer(question, retrieved_chunks):
+
     context_parts = []
 
     for number, chunk in enumerate(retrieved_chunks, start=1):
@@ -49,8 +38,7 @@ Do not invent facts.
 
 Format the answer using Markdown.
 When the answer contains multiple items, use a numbered list.
-When appropriate, use short paragraphs, bullet points, or numbered lists
-to make the answer easy to read.
+Use short paragraphs, bullet points, or numbered lists when appropriate.
 
 SOURCE CITATION RULES:
 
@@ -69,7 +57,8 @@ SOURCE CITATION RULES:
 6. If the answer cannot be found in the provided context, say:
    "The information could not be found in the provided documents."
 
-7. Do not create a separate Sources section. The application handles that.
+7. Do not create a separate Sources section.
+   The application handles that.
 
 User question:
 {question}
@@ -83,18 +72,38 @@ Document context:
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=AnswerResponse,
-        ),
+            response_json_schema={
+                "type": "object",
+                "properties": {
+                    "answer": {
+                        "type": "string"
+                    },
+                    "source_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "required": [
+                    "answer",
+                    "source_ids"
+                ]
+            }
+        )
     )
 
-    result = AnswerResponse.model_validate_json(response.text)
+    result = json.loads(response.text)
+
+    answer = result.get("answer", "")
+    source_ids = result.get("source_ids", [])
 
     valid_source_ids = set(range(1, len(retrieved_chunks) + 1))
 
     source_ids = [
         source_id
-        for source_id in result.source_ids
+        for source_id in source_ids
         if source_id in valid_source_ids
     ]
 
-    return result.answer, source_ids
+    return answer, source_ids
