@@ -1,53 +1,77 @@
 import os
-
 from dotenv import load_dotenv
 from google import genai
 
+
 load_dotenv()
 
-api_key = os.getenv("GEMINI_API_KEY")
 
-if not api_key:
-    raise ValueError("GEMINI_API_KEY was not found in the .env file.")
-
-client = genai.Client(api_key=api_key)
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
+)
 
 
 def generate_answer(question, retrieved_chunks):
 
-    context_parts = []
-
-    for chunk in retrieved_chunks:
-        context_parts.append(
-            f"Source: {chunk['source']}\n"
-            f"Pages: {chunk['pages']}\n"
-            f"Content: {chunk['text']}"
-        )
-
-    context = "\n\n".join(context_parts)
-
-    prompt = f"""
-You are a document question-answering assistant.
-
-Answer the user's question using ONLY the provided document context.
-
-Do not invent facts or information that is not present in the documents.
-
-If the answer is found in the documents, explain it clearly and concisely.
-
-If the information cannot be found in the provided documents, say:
-"The information could not be found in the provided documents."
-
-User question:
-{question}
-
-Document context:
-{context}
-"""
-
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
+    context = "\n\n".join(
+        [
+            f"Source: {chunk['source']} | Pages: {chunk['pages']}\n"
+            f"{chunk['text']}"
+            for chunk in retrieved_chunks
+        ]
     )
 
-    return response.text
+    prompt = f"""
+You are a knowledge assistant.
+
+Answer the user's question using ONLY the information provided
+in the context below.
+
+If the context does not contain enough information to answer
+the question, say that the information was not found in the
+provided documents.
+
+Do not invent facts or use outside knowledge.
+
+Context:
+{context}
+
+Question:
+{question}
+"""
+
+    response = client.interactions.create(
+        model="gemini-3.8-flash",
+        system_instruction=(
+            "You answer questions using the provided document context. "
+            "Stay grounded in that context and do not invent information."
+        ),
+        input=prompt
+    )
+
+    return response.output_text
+
+
+if __name__ == "__main__":
+    test_question = "What counselling services are available to students?"
+
+    from retrieval import retrieve_chunks
+
+    results = retrieve_chunks(test_question)
+
+    retrieved_chunks = []
+
+    for i, document in enumerate(results["documents"][0]):
+        retrieved_chunks.append({
+            "text": document,
+            "source": results["metadatas"][0][i]["source"],
+            "pages": results["metadatas"][0][i]["pages"]
+        })
+
+    answer = generate_answer(
+        test_question,
+        retrieved_chunks
+    )
+
+    print("\n--- Answer ---")
+    print(answer)
